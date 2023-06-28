@@ -56,7 +56,7 @@ s dReturn On rOne
 j raisepressure
 
 turnAirOff:
-s dReturn On rZero
+s dAirVent On rZero
 j main
 
 turnAirOn:
