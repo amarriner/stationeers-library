@@ -1,0 +1,64 @@
+alias dWallCooler d0
+alias dGasSensor d1
+alias dReturn d2
+alias dAirVent d3
+# alias dO2ReturnVent d3
+# alias dCo2Vent d4
+# alias dWallHeater d5
+
+alias rRoomTemp r0
+alias rZero r1
+alias rOne r2
+# alias rRoomO2Pct r3
+alias rRoomPressure r4
+
+define MINTEMP 293
+define MAXTEMP 303
+define MINPRESSURE 90
+define MINPRESSURECUTOFF 93
+define MAXPRESSURE 100
+define MAXPRESSURECUTOFF 97
+
+move rZero 0
+move rOne 1
+
+main:
+yield
+l rRoomTemp dGasSensor Temperature
+bgt rRoomTemp MAXTEMP turnCoolerOn
+blt rRoomTemp MINTEMP turnCoolerOff
+
+lowerpressure:
+l rRoomPressure dGasSensor Pressure
+bgt rRoomPressure MAXPRESSURE turnReturnOn
+blt rRoomPressure MINPRESSURECUTOFF turnReturnOff
+
+raisepressure:
+blt rRoomPressure MINPRESSURE turnAirOn
+bgt rRoomPressure MAXPRESSURECUTOFF turnAirOff
+
+j main
+
+turnCoolerOn:
+s dWallCooler On rOne
+j lowerpressure
+
+turnCoolerOff:
+s dWallCooler On rZero
+j lowerpressure
+
+turnReturnOff:
+s dReturn On rZero
+j raisepressure
+
+turnReturnOn:
+s dReturn On rOne
+j raisepressure
+
+turnAirOff:
+s dReturn On rZero
+j main
+
+turnAirOn:
+s dAirVent On rOne
+j main
