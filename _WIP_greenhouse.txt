@@ -1,8 +1,9 @@
 alias dWallCooler d0
 alias dGasSensor d1
-alias dReturnFilter d2
-alias dReturnVent d3
+alias dReturn d2
+alias dO2ReturnVent d3
 alias dCo2Vent d4
+alias dWallHeater d5
 
 alias rRoomTemp r0
 alias rZero r1
@@ -12,10 +13,14 @@ alias rRoomPressure r4
 
 define MINTEMP 295
 define MAXTEMP 301
+define MINHEAT 288
+define MAXHEAT 293
 define MINO2PCT 0.01
 define MAXO2PCT 0.05
-define MINPRESSURE 80
-define MAXPRESSURE 90
+define MINCO2PRESSURE 80
+define MAXCO2PRESSURE 90
+define MINPRESSURE 95
+define MAXPRESSURE 100
 
 move rZero 0
 move rOne 1
@@ -28,13 +33,21 @@ blt rRoomTemp MINTEMP turnCoolerOff
 
 o2:
 l rRoomO2Pct dGasSensor RatioOxygen
-bgt rRoomO2Pct MAXO2PCT turnReturnOn
-blt rRoomO2Pct MINO2PCT turnReturnOff
+bgt rRoomO2Pct MAXO2PCT turnO2ReturnOn
+blt rRoomO2Pct MINO2PCT turnO2ReturnOff
+
+co2pressure:
+l rRoomPressure dGasSensor Pressure
+bgt rRoomPressure MAXCO2PRESSURE turnCo2Off
+blt rRoomPressure MINCO2PRESSURE turnCo2On
+
+heat:
+bgt rRoomTemp MAXHEAT turnHeatOff
+blt rRoomTemp MINHEAT turnHeatOn
 
 pressure:
-l rRoomPressure dGasSensor Pressure
-bgt rRoomPressure MAXPRESSURE turnCo2On
-blt rRoomPressure MINPRESSURE turnCo2Off
+bgt rRoomPressure MAXPRESSURE turnReturnOn
+blt rRoomPressure MINPRESSURE turnReturnOff
 
 j main
 
@@ -46,20 +59,34 @@ turnCoolerOff:
 s dWallCooler On rZero
 j o2
 
-turnReturnOn:
-s dReturnFilter On rOne
-s dReturnVent On rOne
-j pressure
+turnO2ReturnOn:
+s dO2ReturnVent On rOne
+j co2pressure
 
-turnReturnOff:
-s dReturnFilter On rZero
-s dReturnVent On rZero
-j pressure
+turnO2ReturnOff:
+s dO2ReturnVent On rZero
+j co2pressure
 
 turnCo2On:
 s dCo2Vent On rOne
-j main
+j heat
 
 turnCo2Off:
 s dCo2Vent On rZero
+j heat
+
+turnHeatOn:
+s dWallHeater On rOne
+j pressure
+
+turnHeatOff:
+s dWallHeater On rZero
+j pressure
+
+turnReturnOff:
+s dReturn On rZero
+j main
+
+turnReturnOn:
+s dReturn On rOne
 j main
