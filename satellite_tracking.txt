@@ -1,0 +1,129 @@
+# https://steamcommunity.com/sharedfiles/filedetails/?id=2966975779
+#Satellite Tracking using the sine wave v1.5
+alias dRadar d0
+alias dLEDStep d1 #LED indicator for step display
+alias dLEDDispH d2 #Horizontal
+alias dLEDDispV d3 #Vertical
+alias dLEDDispS d4 #SignalStrength
+alias dLever d5 # AutoLanding Lever
+alias rTargetSize r8 #Trader Size
+alias rStepSize r9
+alias rBaseHangle r10
+alias rBaseVangle r11
+alias rSignalStrength r12
+alias rOldStrength r13
+alias rTimeLimit r14
+alias rPhaseShift r15
+alias rAutoLanding r7
+Init:
+l r1 dRadar PrefabHash
+seq r0 r1 -2138748650 #Small Dish
+select rTargetSize r0 3 7
+select rTimeLimit r0 6 10 #Approximately 90 to 100 signal strength
+seq r0 r1 1913391845 #Large dish
+select rTargetSize r0 12 rTargetSize
+select rTimeLimit r0 20 rTimeLimit #Max signal strength
+
+Start:
+l r0 dRadar On
+s dLEDStep Color 6 #idle
+s dLEDStep On r0
+s dLEDDispH On r0
+s dLEDDispV On r0
+s dLEDDispS On r0
+beqz r0 Start
+l rBaseHangle dRadar Horizontal
+Traveling:#find new SignalID
+    l r0 dRadar On
+    l rAutoLanding dLever Open
+    sb -2066405918 On rAutoLanding #Landingpad Data And Power
+    beqz r0 Start
+    s dLEDStep Color 2 #search
+    s dRadar Horizontal rBaseHangle
+    jal _HorToVer
+    jal _WaitPositionV
+    move r0 1
+Waiting:
+    s dLEDStep Color -1 #Waiting
+    sleep 1
+    l rSignalStrength dRadar SignalStrength
+    l r3 dRadar InterrogationProgress
+    l r2 dRadar SizeX
+    bgtz r2 Awake
+    add r0 r0 1
+    s db Setting r0
+    ble r0 rTimeLimit Waiting
+Awake:
+    s dLEDDispS Setting rSignalStrength
+    beq rSignalStrength -1 StepNext
+    beq r3 1 StepSync #already found
+    bgt r2 rTargetSize     StepSync
+    ble rSignalStrength 25 FoundNewSignal
+    beq rOldStrength -1 StepSync #get Strength
+    sub r0 rOldStrength rSignalStrength #Caution-negative value
+    mod rStepSize r0 3 #X-axis Shift
+    select rStepSize r0 rStepSize rSignalStrength #zero chk
+    bgez r0 FindNextSignal #keep going
+    mul r1 deg2rad rStepSize
+    add rPhaseShift rPhaseShift r1 #synchronize to the orbit of the trader
+    add rBaseHangle rBaseHangle rStepSize
+    bnez rStepSize Traveling
+StepSync:
+    move rStepSize 5#2
+    bnez rStepSize FindNextSignal
+StepNext:
+    move rStepSize 22.5 #45
+FindNextSignal:
+    add rBaseHangle rBaseHangle rStepSize #Step Increase
+    move rOldStrength rSignalStrength
+    bgt rBaseHangle 360 TravelingEnd
+j Traveling
+TravelingEnd:
+mod rBaseHangle rBaseHangle 360 #Horizontal Reset
+div r0 pi 4 #45'
+add rPhaseShift rPhaseShift r0
+mod rPhaseShift rPhaseShift pi #PhaseShift Reset
+j Traveling
+
+FoundNewSignal:
+s dRadar Activate 0
+l r0 dRadar Setting
+l r1 dRadar MinimumWattsToContact
+l r2 dRadar WattsReachingContact
+select r1 rAutoLanding r2 0
+add r1 r1 r0
+add r1 r1 r2
+s dRadar Setting r1
+s dRadar Activate 1
+s dLEDStep Color 5 #finded
+Interrogate:
+yield
+l r2 dRadar InterrogationProgress
+breqz r2 5 ##########
+bne r2 1 Interrogate
+yield
+s dRadar Activate rAutoLanding #Auto Landing
+sb -1535893860 On r2 #flash light
+s dRadar Setting r0
+j StepSync
+
+_WaitPositionV:
+s dRadar Vertical rBaseVangle
+Re:
+l r0 dRadar Horizontal
+s dLEDDispH Setting r0
+l r1 dRadar Vertical
+s dLEDDispV Setting r1
+sleep 1
+l r3 dRadar Vertical
+bne r3 r1 Re #waiting reach to position
+j ra
+_HorToVer:# Convert horizontal angle to vertical angle
+mul r0 deg2rad rBaseHangle
+add r0 r0 rPhaseShift
+sin r0 r0
+mul r0 r0 90 #horizontal to Vertical
+slez r1 r0
+select r1 r1 -1 1
+mul rBaseVangle r0 r1 #negative to  positive
+j ra
