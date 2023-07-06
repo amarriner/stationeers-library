@@ -1,26 +1,21 @@
 alias dWallCooler d0
 alias dGasSensor d1
 alias dReturn d2
-alias dO2ReturnVent d3
-alias dCo2Vent d4
-alias dWallHeater d5
+alias dAirVent d3
+alias dWallHeater d4
 
 alias rRoomTemp r0
 alias rZero r1
 alias rOne r2
-alias rRoomO2Pct r3
 alias rRoomPressure r4
 
-define MINTEMP 295
-define MAXTEMP 301
-define MINHEAT 288
-define MAXHEAT 293
-define MINO2PCT 0.01
-define MAXO2PCT 0.05
-define MINCO2PRESSURE 80
-define MAXCO2PRESSURE 90
-define MINPRESSURE 95
-define MAXPRESSURE 100
+define MINTEMP 293
+define TEMPCUTOFF 298
+define MAXTEMP 303
+define MINPRESSURE 85
+define MINPRESSURECUTOFF 87
+define MAXPRESSURE 105
+define MAXPRESSURECUTOFF 103
 
 move rZero 0
 move rOne 1
@@ -29,64 +24,51 @@ main:
 yield
 l rRoomTemp dGasSensor Temperature
 bgt rRoomTemp MAXTEMP turnCoolerOn
-blt rRoomTemp MINTEMP turnCoolerOff
-
-o2:
-l rRoomO2Pct dGasSensor RatioOxygen
-bgt rRoomO2Pct MAXO2PCT turnO2ReturnOn
-blt rRoomO2Pct MINO2PCT turnO2ReturnOff
-
-co2pressure:
-l rRoomPressure dGasSensor Pressure
-bgt rRoomPressure MAXCO2PRESSURE turnCo2Off
-blt rRoomPressure MINCO2PRESSURE turnCo2On
+blt rRoomTemp TEMPCUTOFF turnCoolerOff
 
 heat:
-bgt rRoomTemp MAXHEAT turnHeatOff
-blt rRoomTemp MINHEAT turnHeatOn
+blt rRoomTemp MINTEMP turnHeaterOn
+bgt rRoomTemp TEMPCUTOFF turnHeaterOff
 
-pressure:
+lowerpressure:
+l rRoomPressure dGasSensor Pressure
 bgt rRoomPressure MAXPRESSURE turnReturnOn
-blt rRoomPressure MINPRESSURE turnReturnOff
+blt rRoomPressure MAXPRESSURECUTOFF turnReturnOff
+
+raisepressure:
+blt rRoomPressure MINPRESSURE turnAirOn
+bgt rRoomPressure MINPRESSURECUTOFF turnAirOff
 
 j main
 
 turnCoolerOn:
 s dWallCooler On rOne
-j o2
+j heat
+
+turnHeaterOn:
+s dWallHeater On rOne
+j lowerpressure
 
 turnCoolerOff:
 s dWallCooler On rZero
-j o2
-
-turnO2ReturnOn:
-s dO2ReturnVent On rOne
-j co2pressure
-
-turnO2ReturnOff:
-s dO2ReturnVent On rZero
-j co2pressure
-
-turnCo2On:
-s dCo2Vent On rOne
 j heat
 
-turnCo2Off:
-s dCo2Vent On rZero
-j heat
-
-turnHeatOn:
-s dWallHeater On rOne
-j pressure
-
-turnHeatOff:
+turnHeaterOff:
 s dWallHeater On rZero
-j pressure
+j lowerpressure
 
 turnReturnOff:
 s dReturn On rZero
-j main
+j raisepressure
 
 turnReturnOn:
 s dReturn On rOne
+j raisepressure
+
+turnAirOff:
+s dAirVent On rZero
+j main
+
+turnAirOn:
+s dAirVent On rOne
 j main
