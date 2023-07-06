@@ -1,0 +1,47 @@
+alias dAutoLathe d0
+alias dAutoLatheStacker d1
+alias dElectronicsPrinter d2
+alias dElectronicsPrinterStacker d3
+alias dPipeBender d4
+alias dPipeBenderStacker d5
+
+alias index r0
+alias stacker r1
+alias counter r2
+alias limit r3
+alias activated r4
+alias off r7
+alias on r8
+
+move index 0
+move off 0
+move on 1
+
+s dAutoLathe ClearMemory on
+s dElectronicsPrinter ClearMemory on
+s dPipeBender ClearMemory on
+
+main:
+add r1 index 1
+l activated dr0 Activate
+bnez activated checkPrinter
+loop:
+add index index 2
+brlt index 6 3
+move index 0
+yield
+j main
+
+# dr0 = the Printer
+# dr1 = the Printer's stacker
+checkPrinter:
+s dr1 On on
+l counter dr0 ExportCount
+l limit dr1 Setting
+brlt counter limit 6
+s dr0 Activate off
+s dr0 ClearMemory on
+s dr0 On off
+s dr1 Activate off
+s dr1 On off
+j loop
